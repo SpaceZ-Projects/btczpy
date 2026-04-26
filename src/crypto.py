@@ -569,6 +569,51 @@ def is_xprv(text):
         return True
     except:
         return False
+    
+
+def pubkey_to_address(txin_type, pubkey):
+    if txin_type == 'p2pkh':
+        return public_key_to_p2pkh(bfh(pubkey))
+    else:
+        raise NotImplementedError(txin_type)
+    
+
+def pubkey_from_signature(sig, h):
+    if len(sig) != 65:
+        raise Exception("Wrong encoding")
+    nV = sig[0]
+    if nV < 27 or nV >= 35:
+        raise Exception("Bad encoding")
+    if nV >= 31:
+        compressed = True
+        nV -= 4
+    else:
+        compressed = False
+    recid = nV - 27
+    return MyVerifyingKey.from_signature(sig[1:], recid, h, curve = SECP256k1), compressed
+    
+
+def msg_magic(message):
+    length = bfh(var_int(len(message)))
+    return b"\x18BTCZ Signed Message:\n" + length + message
+
+
+def verify_message(address, sig, message):
+    assert_bytes(sig, message)
+    try:
+        h = Hash(msg_magic(message))
+        public_key, compressed = pubkey_from_signature(sig, h)
+        pubkey = point_to_ser(public_key.pubkey.point, compressed)
+        for txin_type in ['p2pkh']:
+            addr = pubkey_to_address(txin_type, bh2u(pubkey))
+            if address == addr:
+                break
+        else:
+            raise Exception("Bad signature")
+        public_key.verify_digest(sig[1:], h, sigdecode = ecdsa.util.sigdecode_string)
+        return True
+    except Exception as e:
+        return False
 
 
 class MyVerifyingKey(ecdsa.VerifyingKey):
