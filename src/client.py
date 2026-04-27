@@ -122,5 +122,8 @@ class ElectrumClient:
     async def get_donation_address(self):
         return await self.send("server.donation_address")
     
+    async def server_version(self, client_name="Electrum Web Wallet", protocol_version="1.4"):
+        return await self.send("server.version", [client_name, protocol_version])
+    
     async def ping(self):
         return await self.send("server.ping")
