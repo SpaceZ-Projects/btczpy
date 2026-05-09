@@ -37,3 +37,4 @@ wif, address = generate_key()
 
 print("WIF:", wif)
 print("Address:", address)
+```
