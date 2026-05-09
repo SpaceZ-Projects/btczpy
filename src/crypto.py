@@ -652,6 +652,37 @@ class EC_KEY(object):
 
     def __init__( self, k ):
         secret = ecdsa.util.string_to_number(k)
-        self.pubkey = ecdsa.ecdsa.Public_key(generator_secp256k1, generator_secp256k1 * secret)
-        self.privkey = ecdsa.ecdsa.Private_key(self.pubkey, secret)
+        self.pubkey = ecdsa.ecdsa.Public_key( generator_secp256k1, generator_secp256k1 * secret )
+        self.privkey = ecdsa.ecdsa.Private_key( self.pubkey, secret )
         self.secret = secret
+
+    def get_public_key(self, compressed=True):
+        return bh2u(point_to_ser(self.pubkey.point, compressed))
+
+    def sign(self, msg_hash):
+        private_key = MySigningKey.from_secret_exponent(self.secret, curve = SECP256k1)
+        public_key = private_key.get_verifying_key()
+        signature = private_key.sign_digest_deterministic(msg_hash, hashfunc=hashlib.sha256, sigencode = ecdsa.util.sigencode_string)
+        assert public_key.verify_digest(signature, msg_hash, sigdecode = ecdsa.util.sigdecode_string)
+        return signature
+
+    def sign_message(self, message, is_compressed):
+        message = to_bytes(message, 'utf8')
+        signature = self.sign(Hash(msg_magic(message)))
+        for i in range(4):
+            sig = bytes([27 + i + (4 if is_compressed else 0)]) + signature
+            try:
+                self.verify_message(sig, message)
+                return sig
+            except Exception as e:
+                continue
+        else:
+            raise Exception("error: cannot sign message")
+
+    def verify_message(self, sig, message):
+        assert_bytes(message)
+        h = Hash(msg_magic(message))
+        public_key, compressed = pubkey_from_signature(sig, h)
+        if point_to_ser(public_key.pubkey.point, compressed) != point_to_ser(self.pubkey.point, compressed):
+            raise Exception("Bad signature")
+        public_key.verify_digest(sig[1:], h, sigdecode = ecdsa.util.sigdecode_string)
