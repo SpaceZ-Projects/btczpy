@@ -2,15 +2,16 @@ from setuptools import setup
 
 setup(
     name="btczpy",
-    version="1.0.0",
-    description="Python library for BitcoinZ",
+    version="1.0.1",
+    description="Python library for Electrum Web Wallet",
     author="BitcoinZ Community",
     license="MIT",
     packages=["btczpy"],
     package_dir={"btczpy": "src"},
     package_data={
         'btczpy': [
-            'wordlist/*.txt'
+            'wordlist/*.txt',
+            'servers.json'
         ]
     }, 
     python_requires=">=3.10",
